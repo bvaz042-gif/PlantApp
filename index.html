@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Medicinal Plants</title>
+
+<style>
+body {
+	margin:0;
+	font-family:Arial;
+	background:#f5f5f5;
+}
+
+.screen {
+	display:none;
+	max-width:600px;
+	margin:auto;
+	background:white;
+	height:100vh;
+	flex-direction:column;
+}
+
+.active { display:flex; }
+
+.content { padding:20px; text-align:center; }
+
+.card {
+	background:#f9f9f9;
+	padding:15px;
+	margin:10px;
+	border-radius:15px;
+	cursor:pointer;
+	display:flex;
+	gap:10px;
+	align-items:center;
+}
+
+.bottom-nav {
+	display:flex;
+	justify-content:space-around;
+	background:#eee;
+	padding:10px;
+}
+
+.center-btn {
+	background:green;
+	color:white;
+	padding:15px;
+	border-radius:50%;
+	cursor:pointer;
+}
+
+img { max-width:100%; }
+
+video { width:100%; }
+</style>
+</head>
+
+<body>
+
+<!-- 🌿 PANTALLA 1 -->
+<div id="screen1" class="screen active">
+	<div class="content">
+		<h1>Medicinal Plants 🌿</h1>
+		<p>Descubre plantas con inteligencia artificial</p>
+		<button onclick="show('screen2')">Continuar</button>
+	</div>
+</div>
+
+<!-- 🌿 PANTALLA 2 -->
+<div id="screen2" class="screen">
+	<div class="content">
+		<h2>Condiciones</h2>
+		<p>Acepta para continuar</p>
+		<button onclick="show('screen3')">Aceptar</button>
+	</div>
+</div>
+
+<!-- 🌿 PANTALLA 3 -->
+<div id="screen3" class="screen">
+	<div class="content">
+
+		<div class="card" onclick="openCamera()">📷 Identificar planta</div>
+		<div class="card" onclick="openIA()">🔍 Preguntar IA</div>
+		<div class="card" onclick="mostrarCatalogo()">🌿 Catálogo</div>
+
+	</div>
+
+	<div class="bottom-nav">
+		<div onclick="show('screen3')">🏠</div>
+		<div class="center-btn" onclick="openCamera()">📷</div>
+		<div onclick="openIA()">❓</div>
+	</div>
+</div>
+
+<!-- 📷 CÁMARA -->
+<div id="screen4" class="screen">
+	<video id="video" autoplay playsinline></video>
+	<canvas id="canvas" style="display:none;"></canvas>
+
+	<div class="content">
+		<button onclick="takePhoto()">📸 Capturar</button>
+	</div>
+</div>
+
+<!-- 🔍 CARGA -->
+<div id="screen5" class="screen">
+	<div class="content"><h2>Identificando...</h2></div>
+</div>
+
+<!-- 🌿 RESULTADO -->
+<div id="screen6" class="screen">
+	<div class="content">
+		<h2 id="resultado"></h2>
+		<button onclick="show('screen3')">Volver</button>
+	</div>
+</div>
+
+<!-- 🌿 CATÁLOGO -->
+<div id="screen7" class="screen">
+	<div class="content">
+		<h2>Plantas</h2>
+		<div id="lista"></div>
+		<button onclick="show('screen3')">← Volver</button>
+	</div>
+</div>
+
+<!-- 🌿 DETALLE -->
+<div id="screen8" class="screen">
+	<img id="detalleImg">
+	<div class="content">
+		<h2 id="detalleNombre"></h2>
+		<div id="descripcion"></div>
+		<button onclick="show('screen7')">← Volver</button>
+	</div>
+</div>
+
+<!-- 🤖 IA -->
+<div id="screen9" class="screen">
+	<div class="content">
+		<input id="pregunta" placeholder="Pregunta sobre una planta">
+		<button onclick="preguntarIA()">Preguntar</button>
+		<p id="respuesta"></p>
+		<button onclick="show('screen3')">← Volver</button>
+	</div>
+</div>
+
+<script>
+
+/* ================= NAV ================= */
+function show(id){
+	document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+	document.getElementById(id).classList.add("active");
+}
+
+/* ================= CÁMARA ================= */
+let stream;
+
+function openCamera(){
+	show("screen4");
+
+	navigator.mediaDevices.getUserMedia({ video:true })
+	.then(s=>{
+		stream = s;
+		document.getElementById("video").srcObject = s;
+	});
+}
+
+async function takePhoto(){
+
+	const video = document.getElementById("video");
+	const canvas = document.getElementById("canvas");
+	const ctx = canvas.getContext("2d");
+
+	canvas.width = video.videoWidth;
+	canvas.height = video.videoHeight;
+	ctx.drawImage(video,0,0);
+
+	const blob = await new Promise(r=>canvas.toBlob(r,"image/jpeg"));
+
+	stream.getTracks().forEach(t=>t.stop());
+
+	show("screen5");
+
+	const API_KEY = "2b1013D7FFmEp5FXPdwK6FD2";
+
+	const formData = new FormData();
+	formData.append("images", blob);
+	formData.append("organs", "leaf");
+
+	try{
+		const res = await fetch(
+		`https://my-api.plantnet.org/v2/identify/all?api-key=${API_KEY}`,
+		{method:"POST", body:formData}
+		);
+
+		const data = await res.json();
+
+		if(!data.results.length) throw "error";
+
+		const nombre = data.results[0].species.scientificNameWithoutAuthor;
+
+		document.getElementById("resultado").innerText = nombre;
+
+		show("screen6");
+
+	}catch{
+		alert("No se pudo reconocer la planta");
+		show("screen3");
+	}
+}
+
+/* ================= IA ================= */
+function openIA(){
+	show("screen9");
+}
+
+function preguntarIA(){
+
+	const q = document.getElementById("pregunta").value.toLowerCase();
+	const res = document.getElementById("respuesta");
+
+	const planta = plantas.find(p => q.includes(p.nombre.toLowerCase()));
+
+	if(!planta){
+		res.innerText = "No encontrada en la base de datos";
+		return;
+	}
+
+	res.innerText =
+	`${planta.nombre}\n\n${planta.descripcion}\n\n💊 ${planta.beneficios.join(", ")}`;
+}
+
+/* ================= PLANTAS ================= */
+const plantas = [
+{
+	nombre:"Manzanilla",
+	img:"https://www.ecoagricultor.com/wp-content/uploads/2017/05/plantar-manzanilla.png",
+	descripcion:"Es una planta herbácea que se utiliza principalmente seca para preparar té. Es muy valorada por sus efectos suaves y calmantes.",
+	uso:"Infusión para estrés y sueño, Planta calmante y digestiva.",
+	beneficios:["Relajante","Digestiva","Antiinflamatoria"]
+},
+{
+	nombre:"Menta",
+	img:"https://tse4.mm.bing.net/th/id/OIP.snPE8Dg8D2RPevGFrQOkqwHaE_",
+	descripcion:"Es un género de plantas que crece fácilmente en jardines y macetas. Sus hojas contienen aceites esenciales que le dan su característico sabor refrescante.",
+	uso:"Infusiones y cocina, Refresca y ayuda a la digestión.",
+	beneficios:["Digestiva","Refrescante"]
+},
+{
+	nombre:"Romero",
+	img:"https://tse1.mm.bing.net/th/id/OIP.8OHs42WlSvPsNx9Gj1-69QHaE7",
+	descripcion:"Es un arbusto perenne que crece fácilmente en climas cálidos. Sus hojas contienen aceites esenciales con propiedades medicinales.",
+	uso:"Cocina y aceites, Mejora memoria y circulación.",
+	beneficios:["Memoria","Antioxidante"]
+},
+{
+	nombre:"Lavanda",
+	img:"https://www.koldourizarbarrena.com/wp-content/uploads/2021/09/como-cuidar-la-lavanda.jpg",
+	descripcion:"Es una planta aromática de flores moradas o lilas, muy conocida por su olor relajante y su uso en medicina natural y perfumería.",
+	uso:"Infusiones y aromaterapia.",
+	beneficios:["Relajante","Antiestrés"]
+},
+{
+	nombre:"Aloe Vera",
+	img:"https://th.bing.com/th/id/R.7645fb5a48a39a5b840599bcde0ae29c?rik=ejk8QkvL7Ay%2fvg&riu=http%3a%2f%2f2.bp.blogspot.com%2f-M_l0icgcXqg%2fTgD1IVbduWI%2fAAAAAAAAAA4%2f_Kt9tme0soM%2fs1600%2faloe_vera_planta.jpg&ehk=WyjFyWCWprsiebzLse08q63Cx7Pmaj6yew1JmdXb5IY%3d&risl=&pid=ImgRaw&r=0",
+	descripcion:"Es una planta que almacena agua en sus hojas y produce un gel natural rico en compuestos beneficiosos para la piel y el cuerpo.",
+	uso:"Gel para piel y cabello.",
+	beneficios:["Cicatrizante","Hidratante"]
+},
+{
+	nombre:"Eucalipto",
+	img:"https://tse2.mm.bing.net/th/id/OIP.IpFRiXUQlCi-NwqYbLXIqwHaE6?rs=1&pid=ImgDetMain&o=7&rm=3",
+	descripcion:"Es un árbol originario de Australia, pero hoy se encuentra en muchas regiones del mundo. Sus hojas contienen aceites esenciales con efectos medicinales.",
+	uso:"Infusiones y aceites esenciales, Alivia congestión y mejora respiración.",
+	beneficios:["Descongestionante","Antiséptico","Antioxidante","Antiinflamatorio"]
+},
+{
+	nombre:"Caléndula",
+	img:"https://tse4.mm.bing.net/th/id/OIP.6aP3vBwVVaoPNFuMDgYldwHaFj?rs=1&pid=ImgDetMain&o=7&rm=3",
+	descripcion:"Es una planta herbácea que se cultiva en jardines y huertos. Sus flores se utilizan frescas o secas en remedios naturales, cremas y aceites.",
+	uso:"Pomadas y cremas para piel, Cura heridas y alivia inflamación.",
+	beneficios:["Cicatrizante","Antiinflamatoria","Antioxidante","Antiarrugas","Antibacteriana"]
+},
+{
+	nombre:"Valeriana",
+	img:"https://tse4.mm.bing.net/th/id/OIP.b61EtSZ3yQPi5RtDzz8TgAHaEK?rs=1&pid=ImgDetMain&o=7&rm=3",
+	descripcion:"Es una planta medicinal conocida principalmente por su efecto sedante y relajante. Su raíz es la parte que más se utiliza en remedios naturales.",
+	uso:"Infusiones antes de dormir, Ayuda a dormir y reduce ansiedad.",
+	beneficios:["Sedante","Antiestrés","Antidepresivo","Antidepresivo"]
+},
+{
+	nombre:"Ginseng",
+	img:"https://tse3.mm.bing.net/th/id/OIP.Ye1PBhEycuG2Y-zClpjiNAHaE-?rs=1&pid=ImgDetMain&o=7&rm=3",
+	descripcion:"Es una planta de raíz carnosa que crece lentamente y se considera un “adaptógeno”, es decir, ayuda al cuerpo a adaptarse al estrés físico y mental.",
+	uso:"Suplementos y tés energéticos, Mejora energía y concentración.",
+	beneficios:["Energizante","Mejora concentración"]
+},
+{
+	nombre:"Árnica",
+	img:"https://tse2.mm.bing.net/th/id/OIP.ZB_02W5Cn4mCNJh4zYnzhAHaFj?rs=1&pid=ImgDetMain&o=7&rm=3",
+	descripcion:"Planta medicinal con efecto antiinflamatorio y analgésico, utilizada principalmente de forma tópica. Es comúnmente aplicada en casos de contusiones, esguinces, dolores musculares y artritis para aliviar el dolor y reducir la inflamación.",
+	uso:"Se emplea en pomadas, geles o compresas para golpes, moretones y dolores musculares. No se recomienda su consumo oral sin supervisión médica debido a posibles efectos secundarios.",
+	beneficios:["Antiinflamatoria","Analgésica","Alivia contusiones y dolores musculares","Reduce moretones"]
+},
+{
+	nombre:"Epazote",
+	img:"https://garden.org/pics/2018-04-25/robertduval14/78aec3.jpg",
+	descripcion:"El epazote es una planta aromática originaria de México, conocida por su sabor fuerte y sus propiedades medicinales. Tradicionalmente se ha utilizado para aliviar problemas digestivos como gases, cólicos y parásitos intestinales. Además, el epazote tiene propiedades antiinflamatorias y se ha empleado para tratar afecciones respiratorias y menstruales.",
+	uso:"Se utiliza en infusiones y extractos para tratar problemas digestivos y respiratorios.",
+	beneficios:["Alivia gases y cólicos","Combate parásitos intestinales","Reduce inflamación respiratoria","Ayuda en trastornos menstruales"]
+},
+{
+	nombre:"Bugambilia",
+	img:"https://tse3.mm.bing.net/th/id/OIP.qbEtEccBmWvd4bPb1s_t8AHaFj?rs=1&pid=ImgDetMain&o=7&rm=3",
+	descripcion:"La Bugambilia es una planta ornamental conocida por sus vibrantes flores, pero también tiene propiedades medicinales. Tradicionalmente se ha utilizado para tratar problemas respiratorios, como resfriados y tos, debido a sus propiedades expectorantes. Además, se cree que la bugambilia tiene efectos antiinflamatorios y antioxidantes, lo que la hace útil para aliviar dolores musculares y mejorar la salud de la piel.",
+	uso:"Se emplea en infusiones para tratar resfriados y como tópico para aliviar dolores musculares y mejorar la piel.",
+	beneficios:["ayuda a aliviar irritación de garganta","Alivia la tos","Alivia dolores musculares"]
+},
+{
+	nombre:"Nopal",
+	img:"https://th.bing.com/th/id/R.e9c18095c2c68cf9e03cb9a8027020c5?rik=%2fnq97Usm%2f54sQA&riu=http%3a%2f%2franchonatura.com%2fwp-content%2fuploads%2f2018%2f06%2fnopales.jpg&ehk=1fh2h7T7nNP9qlFVQYopCxX320Ajk2c2cFz4K97ZBOY%3d&risl=&pid=ImgRaw&r=0",
+	descripcion:"El nopal es una planta suculenta originaria de México, conocida por sus propiedades medicinales y nutricionales. Es rico en fibra, vitaminas y minerales, lo que lo convierte en un alimento beneficioso para la salud. El nopal se ha utilizado tradicionalmente para ayudar a controlar los niveles de azúcar en la sangre, mejorar la digestión y reducir el colesterol. Además, tiene propiedades antiinflamatorias y antioxidantes, lo que puede contribuir a la salud cardiovascular y al bienestar general.",
+	uso:"Se consume en ensaladas, jugos y suplementos para controlar azúcar, mejorar digestión y reducir colesterol.",
+	beneficios:["Controla azúcar en sangre","Mejora digestión","Reduce colesterol","Propiedades antiinflamatorias y antioxidantes"]
+}
+];
+
+/* ================= CATÁLOGO ================= */
+function mostrarCatalogo(){
+	show("screen7");
+
+	const lista = document.getElementById("lista");
+	lista.innerHTML = "";
+
+	plantas.forEach(p=>{
+		lista.innerHTML += `
+		<div class="card" onclick='verDetalle(${JSON.stringify(p)})'>
+			<img src="${p.img}" width="70">
+			<div>
+				<h3>${p.nombre}</h3>
+				<p>${p.descripcion}</p>
+			</div>
+		</div>`;
+	});
+}
+
+/* ================= DETALLE ================= */
+function verDetalle(planta){
+
+	show("screen8");
+
+	document.getElementById("detalleNombre").innerText = planta.nombre;
+	document.getElementById("detalleImg").src = planta.img;
+
+	document.getElementById("descripcion").innerHTML =
+	`
+	<p>${planta.descripcion}</p>
+	<p><b>Uso:</b> ${planta.uso}</p>
+	<p><b>Beneficios:</b> ${planta.beneficios.join(", ")}</p>
+	`;
+}
+
+</script>
+
+</body>
+</html>
