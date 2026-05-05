@@ -661,14 +661,13 @@ function verDetalle(planta){
 
 	show("screen8");
 
-	document.getElementById("resultado").innerText = plantaEncontrada.nombre;
-	document.getElementById("resultado").innerText = nombreAPI;
+	document.getElementById("resultado").innerText = planta.nombre;
 	document.getElementById("detalleImg").src = planta.img;
 
 	document.getElementById("descripcion").innerHTML =
 	`
-	<p><b>Nombre científico:</b> ${planta.cientifico}</p>
 	<p>${planta.descripcion}</p>
+	<p><b>Nombre científico:</b> ${planta.cientifico}</p>
 	<p><b>Uso:</b> ${planta.uso}</p>
 	<p><b>Beneficios:</b> ${planta.beneficios.join(", ")}</p>
 	`;
