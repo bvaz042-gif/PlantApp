@@ -649,6 +649,7 @@ function mostrarCatalogo(){
 			<img src="${p.img}" width="70">
 			<div>
 				<h3>${p.nombre}</h3>
+				<p>${p.nombre.cientifico}</p>
 				<p>${p.descripcion}</p>
 			</div>
 		</div>`;
@@ -660,11 +661,13 @@ function verDetalle(planta){
 
 	show("screen8");
 
-	document.getElementById("detalleNombre").innerText = planta.nombre;
+	document.getElementById("resultado").innerText = plantaEncontrada.nombre;
+	document.getElementById("resultado").innerText = nombreAPI;
 	document.getElementById("detalleImg").src = planta.img;
 
 	document.getElementById("descripcion").innerHTML =
 	`
+	<p><b>Nombre científico:</b> ${planta.cientifico}</p>
 	<p>${planta.descripcion}</p>
 	<p><b>Uso:</b> ${planta.uso}</p>
 	<p><b>Beneficios:</b> ${planta.beneficios.join(", ")}</p>
