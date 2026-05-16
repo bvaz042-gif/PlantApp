@@ -43,13 +43,12 @@ body{
 }
 
 /* ================= CONTENIDO ================= */
-.content{
-    padding:25px;
+.content {
+    padding:20px;
     text-align:center;
     overflow-y:auto;
     flex:1;
 }
-
 h1{
     color:#2e7d32;
     font-size:2.2rem;

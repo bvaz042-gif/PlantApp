@@ -61,7 +61,6 @@ img { max-width:100%; }
 
 video { width:100%; }
 </style>
-</head>
 
 <body>
 
@@ -141,8 +140,12 @@ video { width:100%; }
 	<div class="content">
 		<h2>🌿Plantas Medicinales en la región🌿</h2>
 		<div id="lista"></div>
-		<button onclick="show('screen3')">← Volver</button>
 	</div>
+	<div class="bottom-nav">
+        <button onclick="show('screen3')">
+            ← Regresar al inicio
+        </button>
+    </div>
 </div>
 
 <!-- 🌿 DETALLE -->
@@ -299,18 +302,35 @@ function openIA(){
 
 function preguntarIA(){
 
-	const q = document.getElementById("pregunta").value.toLowerCase();
-	const res = document.getElementById("respuesta");
+    const q = document.getElementById("pregunta").value.toLowerCase();
+    const res = document.getElementById("respuesta");
 
-	const planta = plantas.find(p => q.includes(p.nombre.toLowerCase()));
+    const planta = plantas.find(p =>
+        q.includes(p.nombre.toLowerCase())
+    );
 
-	if(!planta){
-		res.innerText = "No encontrada en la base de datos";
-		return;
-	}
-
-	res.innerText =
-	`${planta.nombre}\n\n${planta.descripcion}\n\n💊 ${planta.beneficios.join(", ")}`;
+    if(!planta){
+        res.innerHTML = "❌ No encontrada en la base de datos";
+        return;
+    }
+    res.innerHTML = `
+        <img src="${planta.img}" width="250" style="border-radius:15px; margin:10px 0;">
+        <h2>${planta.nombre}</h2>
+        <p><b>🌿 Nombre científico:</b><br>
+        ${planta.cientifico}</p>
+        <p><b>📝 Descripción:</b><br>
+        ${planta.descripcion}</p>
+        <p><b>💊 Uso:</b><br>
+        ${planta.uso}</p>
+        <p><b>✨ Beneficios:</b><br>
+        ${planta.beneficios.join(", ")}</p>
+        <p><b>☕ Remedio:</b><br>
+        ${planta.remedio}</p>
+        <p><b>🧪 Ingredientes:</b><br>
+        ${planta.ingredientes}</p>
+        <p><b>📌 Opcional:</b><br>
+        ${planta.opcional}</p>
+    `;
 }
 
 /* ================= PLANTAS ================= */
