@@ -186,56 +186,112 @@ function openCamera(){
 
 async function takePhoto(){
 
-	const video = document.getElementById("video");
-	const canvas = document.getElementById("canvas");
-	const ctx = canvas.getContext("2d");
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    // verificar cámara
+    if(video.videoWidth === 0){
+        alert("La cámara no está lista");
+        return;
+    }
 
-	canvas.width = video.videoWidth;
-	canvas.height = video.videoHeight;
-	ctx.drawImage(video,0,0);
+    // capturar imagen
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video,0,0);
+    const blob = await new Promise(resolve =>
+        canvas.toBlob(resolve,"image/jpeg")
+    );
 
-	const blob = await new Promise(r=>canvas.toBlob(r,"image/jpeg"));
+    // detener cámara
+    if(stream){
+        stream.getTracks().forEach(t => t.stop());
+    }
+    show("screen5");
 
-	stream.getTracks().forEach(t=>t.stop());
-
-	show("screen5");
-
+    // TU API KEY
 	const API_KEY = "2b1013D7FFmEp5FXPdwK6FD2";
+    const formData = new FormData();
+    formData.append("images", blob);
 
-	const formData = new FormData();
-	formData.append("images", blob);
-	formData.append("organs", "leaf");
+	// detectar automáticamente
+    formData.append("organs", "auto");
 
-	try{
-		const res = await fetch(
-		`https://my-api.plantnet.org/v2/identify/all?api-key=${API_KEY}`,
-		{method:"POST", body:formData}
-		);
+    try{
 
-		const data = await res.json();
+        const res = await fetch(
+            `https://my-api.plantnet.org/v2/identify/all?api-key=${API_KEY}`,
+            {
+                method:"POST",
+                body:formData
+            }
+        );
 
-		let nombreAPI = "No identificada";
-		if(data.results && data.results.length){
-			nombreAPI = data.results[0].species.scientificNameWithoutAuthor.toLowerCase();
-		}
+        // verificar respuesta
+        if(!res.ok){
+            throw new Error("Error servidor");
+        }
+        const data = await res.json();
+        console.log(data);
+        // NO encontró planta
+        if(!data.results || data.results.length === 0){
+            document.getElementById("resultado").innerHTML = `
+                ❌ Planta no encontrada
+            `;
+            show("screen6");
+            return;
+        }
 
+        // nombre científico API
+        const nombreAPI =
+        data.results[0]
+        .species
+        .scientificNameWithoutAuthor
+        .toLowerCase();
+
+        // buscar en catálogo
         const plantaEncontrada = plantas.find(p =>
-		nombreAPI.includes(p.cientifico.toLowerCase()) ||
-		p.cientifico.toLowerCase().includes(nombreAPI)
-	);
-		if(plantaEncontrada){
-			document.getElementById("resultado").innerText = plantaEncontrada.nombre;
-			}else{
-				document.getElementById("resultado").innerText = nombreAPI;
-			}
-			
-			show("screen6");
-		}catch{
-			alert("No se pudo reconocer la planta");
-			show("screen3");
-	}
-}
+            nombreAPI.includes(
+                p.cientifico.toLowerCase()
+            )
+            ||
+            p.cientifico
+            .toLowerCase()
+            .includes(nombreAPI)
+        );
 
+        // SI EXISTE EN TU CATÁLOGO
+        if(plantaEncontrada){
+            // abrir detalle completo
+            verDetalle(plantaEncontrada);
+        }else{
+
+            // detectó planta PERO no está en tu base
+            document.getElementById("resultado").innerHTML = `
+            ⚠️ Planta detectada:
+            <br><br>
+            <b>${nombreAPI}</b>
+            <br><br>
+            No existe en tu catálogo
+            `;
+            show("screen6");
+        }
+    }catch(error){
+        console.log(error);
+        document.getElementById("resultado").innerHTML = `
+        ❌ Error al identificar la planta
+        <br><br>
+        Verifica:
+        <br>
+        • Internet
+        <br>
+        • API KEY
+        <br>
+        • Permisos de cámara
+        `;
+        show("screen6");
+    }
+}
 /* ================= IA ================= */
 function openIA(){
 	show("screen9");
@@ -268,7 +324,7 @@ const plantas = [
 	beneficios:["Relajante","Digestiva","Antiinflamatoria","Mejora el sueño","Alivio de cólicos menstruales"],
 	remedio: "Té de manzanilla." ,
 	ingredientes: "1 cucharada de flores de manzanilla. 1 taza de agua caliente. Hervir el agua. Agregar la manzanilla. Dejar reposar de 5 a 10 minutos. Colar y beber tibio.",
-	Opcional: "agregar miel o limón.  Recomendación No consumir en exceso y evitar usarla si eres alérgico a plantas similares como margaritas o crisantemos.",
+	ocional:"agregar miel o limón.  Recomendación No consumir en exceso y evitar usarla si eres alérgico a plantas similares como margaritas o crisantemos.",
 },
 {
 	nombre:"Menta",
@@ -279,7 +335,7 @@ const plantas = [
     beneficios:["Digestiva","Refrescante","Beneficios respiratorios","Beneficios para el sistema nervioso y bienestar","Beneficios cardiovasculares y musculares","Beneficios en la piel y cuidado personal","Usos prácticos."],
 	remedio: "Té de menta",
     ingredientes:"5 a 10 hojas de menta fresca. 1 taza de agua caliente. Hervir el agua. Agregar las hojas de menta. Dejar reposar 5 minutos. Colar y beber tibio.",
-	Opcional: "agregar miel o limón.",
+	ocional:"agregar miel o limón.",
 },
 {
 	nombre:"Romero",
@@ -813,23 +869,47 @@ function mostrarCatalogo(){
 
 /* ================= DETALLE ================= */
 function verDetalle(planta){
-
-	show("screen8");
-
-	document.getElementById("detalleNombre").innerText = planta.nombre;
-
-	document.getElementById("detalleImg").src = planta.img;
-
-	document.getElementById("descripcion").innerHTML =
-	`
-	<p><b>Nombre científico:</b> ${planta.cientifico}</p>
-	<p><b>Descripción:</b> ${planta.descripcion}</p>
-	<p><b>Uso:</b> ${planta.uso}</p>
-	<p><b>Beneficios:</b> ${planta.beneficios.join(", ")}</p>
-	<p><b>Remedio:</b> ${planta.remedio}</p>
-	<p><b>Ingredientes:</b> ${planta.ingredientes}</p>
-	<p><b>Opcional:</b> ${planta.opcional}</p>
-	`;
+    show("screen8");
+    // nombre
+    document.getElementById("detalleNombre")
+    .innerText = planta.nombre;
+    // imagen
+    document.getElementById("detalleImg")
+    .src = planta.img;
+    // información
+    document.getElementById("descripcion")
+    .innerHTML = `
+    <div class="detalle-card">
+        <p>
+        <b>🌿 Nombre científico:</b><br>
+        ${planta.cientifico}
+        </p>
+        <p>
+        <b>📝 Descripción:</b><br>
+        ${planta.descripcion}
+        </p>
+        <p>
+        <b>💊 Uso:</b><br>
+        ${planta.uso}
+        </p>
+        <p>
+        <b>✨ Beneficios:</b><br>
+        ${planta.beneficios.join(", ")}
+        </p>
+        <p>
+        <b>☕ Remedio:</b><br>
+        ${planta.remedio}
+        </p>
+        <p>
+        <b>🧪 Ingredientes:</b><br>
+        ${planta.ingredientes}
+        </p>
+        <p>
+        <b>📌 Opcional:</b><br>
+        ${planta.opcional || "Sin información"}
+        </p>
+    </div>
+    `;
 }
 
 /* ================= PWA ================= */
